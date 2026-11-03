@@ -1,0 +1,2404 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Research — Autonomous Investigation Console</title>
+    <!-- Inline favicon to silence the 404 -->
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+    <!-- Google Fonts: Space Grotesk (Architectural display) & Fira Code (Instrument Panel mono) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* CSS Variables defining the luminous dark theme */
+        :root {
+            --bg-canvas: #0B0D12;
+            --bg-card: #121620;
+            --bg-card-hover: #171D2A;
+            --border-color: #222836;
+
+            --text-primary: #EDEAE2;
+            --text-muted: #8A8D96;
+
+            --accent-live: #D4AF6A;
+            /* Restrained metallic-gold */
+            --accent-live-rgb: 212, 175, 106;
+            --accent-verified: #8FD9E8;
+            /* Cyan-white */
+            --accent-verified-rgb: 143, 217, 232;
+
+            --error-red: #F0A050;
+            /* Red-amber */
+
+            --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-mono: 'Fira Code', 'Courier New', Courier, monospace;
+
+            --header-height: 60px;
+            --banner-height: 48px;
+        }
+
+        /* Base Reset */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-canvas);
+            color: var(--text-primary);
+            font-family: var(--font-display);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.5;
+        }
+
+        /* Scrollbars styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(11, 13, 18, 0.5);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #222836;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #2E3547;
+        }
+
+        /* Header Styles */
+        .app-header {
+            height: var(--header-height);
+            background: rgba(11, 13, 18, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+        }
+
+        .logo-main {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 1.25rem;
+            letter-spacing: -0.03em;
+            text-transform: uppercase;
+            color: var(--text-primary);
+        }
+
+        .logo-sub {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent-live);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        /* Pulse Status Pill */
+        .status-pill-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(18, 22, 32, 0.6);
+            border: 1px solid var(--border-color);
+            padding: 0.35rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        .status-indicator-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--text-muted);
+            border-radius: 50%;
+            display: inline-block;
+            transition: background-color 0.3s ease;
+        }
+
+        .status-pill-container.active .status-indicator-dot {
+            background-color: var(--accent-live);
+            box-shadow: 0 0 8px var(--accent-live);
+            animation: breathePulse 2s infinite ease-in-out;
+        }
+
+        .status-pill-container.completed .status-indicator-dot {
+            background-color: var(--accent-verified);
+            box-shadow: 0 0 8px var(--accent-verified);
+        }
+
+        .status-pill-text {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .settings-toggle-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 0.4rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid transparent;
+        }
+
+        .settings-toggle-btn:hover {
+            color: var(--text-primary);
+            border-color: var(--border-color);
+            background: rgba(18, 22, 32, 0.4);
+        }
+
+        .settings-toggle-btn.active {
+            color: var(--accent-live);
+            border-color: rgba(212, 175, 106, 0.3);
+            background: rgba(212, 175, 106, 0.05);
+        }
+
+        /* Settings Slide Down Panel */
+        .settings-panel {
+            background: #0E121A;
+            border-bottom: 1px solid var(--border-color);
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 99;
+        }
+
+        .settings-panel.open {
+            max-height: 120px;
+        }
+
+        .settings-grid {
+            padding: 1.25rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+
+        .settings-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .settings-field label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .settings-field select,
+        .settings-field input {
+            background: #151A24;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.45rem 0.75rem;
+            border-radius: 4px;
+            font-family: var(--font-display);
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .settings-field select:focus,
+        .settings-field input:focus {
+            border-color: rgba(212, 175, 106, 0.5);
+        }
+
+        .password-input-wrapper {
+            position: relative;
+            display: flex;
+        }
+
+        .password-input-wrapper input {
+            width: 100%;
+            padding-right: 2.2rem;
+        }
+
+        .btn-toggle-password {
+            position: absolute;
+            right: 0;
+            top: 0;
+            height: 100%;
+            width: 2.2rem;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-toggle-password:hover {
+            color: var(--text-primary);
+        }
+
+        /* Main Workspace Container */
+        .app-workspace {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Hero / Empty State Screen */
+        .hero-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .hero-content {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            color: var(--text-primary);
+            line-height: 1.1;
+            margin-bottom: 0.5rem;
+        }
+
+        .hero-subtitle {
+            font-size: 0.95rem;
+            color: var(--accent-live);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 2.5rem;
+        }
+
+        /* Query Input Form */
+        .query-form {
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(18, 22, 32, 0.6);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem;
+            border-radius: 6px;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .query-form:focus-within {
+            border-color: rgba(212, 175, 106, 0.5);
+            box-shadow: 0 0 15px rgba(212, 175, 106, 0.08);
+        }
+
+        .query-form input {
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-size: 1.05rem;
+            padding: 0.5rem 0.75rem;
+            font-family: var(--font-display);
+        }
+
+        .query-form input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .submit-btn {
+            background: var(--accent-live);
+            color: #0B0D12;
+            border: none;
+            padding: 0 1.25rem;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+
+        .submit-btn:hover {
+            background-color: #E2C084;
+        }
+
+        .submit-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Query Suggestions */
+        .suggestions-container {
+            text-align: left;
+        }
+
+        .suggestions-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: block;
+            margin-bottom: 0.75rem;
+        }
+
+        .suggestions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .suggestion-chip {
+            background: #121620;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.65rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: var(--font-display);
+            font-size: 0.85rem;
+            text-align: left;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .suggestion-chip:hover {
+            border-color: rgba(212, 175, 106, 0.3);
+            background: rgba(212, 175, 106, 0.03);
+            transform: translateX(3px);
+        }
+
+        /* Collapsed strip for the original query */
+        .active-case-banner {
+            height: var(--banner-height);
+            background: #11141D;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .case-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            overflow: hidden;
+        }
+
+        .case-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+
+        .case-query {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent-live);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .case-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .case-actions button {
+            background: rgba(18, 22, 32, 0.6);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.35rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            transition: all 0.2s ease;
+        }
+
+        .case-actions button:hover {
+            color: var(--text-primary);
+            border-color: var(--text-muted);
+        }
+
+        .case-actions .stop-btn {
+            background: rgba(240, 160, 80, 0.05);
+            border-color: rgba(240, 160, 80, 0.2);
+            color: var(--error-red);
+        }
+
+        .case-actions .stop-btn:hover:not(:disabled) {
+            background: rgba(240, 160, 80, 0.15);
+            border-color: var(--error-red);
+        }
+
+        .case-actions .stop-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Split grid workspace */
+        .workspace-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            overflow: hidden;
+        }
+
+        /* Timeline / Main Column */
+        .timeline-column {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .timeline-scroll-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .timeline-events {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Timeline Cards */
+        .timeline-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 1.25rem;
+            position: relative;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .timeline-card:hover {
+            border-color: rgba(138, 141, 150, 0.25);
+        }
+
+        /* Live shimmer effect strictly on active items */
+        .timeline-card.active {
+            border-color: var(--accent-live);
+            box-shadow: 0 0 15px rgba(212, 175, 106, 0.1);
+            animation: liveBreathe 3s infinite ease-in-out;
+        }
+
+        @keyframes liveBreathe {
+            0% {
+                border-color: rgba(212, 175, 106, 0.4);
+                box-shadow: 0 0 5px rgba(212, 175, 106, 0.05);
+            }
+
+            50% {
+                border-color: rgba(212, 175, 106, 0.9);
+                box-shadow: 0 0 15px rgba(212, 175, 106, 0.15);
+            }
+
+            100% {
+                border-color: rgba(212, 175, 106, 0.4);
+                box-shadow: 0 0 5px rgba(212, 175, 106, 0.05);
+            }
+        }
+
+        .timeline-card .card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .timeline-card .card-header i {
+            font-size: 0.95rem;
+        }
+
+        .timeline-card.active .card-header i {
+            color: var(--accent-live);
+        }
+
+        /* Card-specific views */
+        /* Subquestions list */
+        .subquestions-ordered-list {
+            padding-left: 1.25rem;
+            color: var(--text-primary);
+        }
+
+        .subquestions-ordered-list li {
+            margin-bottom: 0.4rem;
+        }
+
+        /* Search item query */
+        .search-card .mono-text {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--text-primary);
+        }
+
+        .search-results-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        .search-result-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(34, 40, 54, 0.4);
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .result-title {
+            color: var(--accent-verified);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            transition: color 0.2s ease;
+        }
+
+        .result-title:hover {
+            color: #BDF0F9;
+            text-decoration: underline;
+        }
+
+        .title-icon {
+            font-size: 0.7rem;
+            opacity: 0.8;
+        }
+
+        .result-url {
+            display: block;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin: 0.15rem 0 0.35rem 0;
+        }
+
+        .result-snippet {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .no-results {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Fetch list */
+        .fetch-row {
+            background: #11141D;
+            border: 1px solid var(--border-color);
+            padding: 0.75rem 1.25rem;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .fetch-row.active {
+            border-left: 2px solid var(--accent-live);
+        }
+
+        .fetch-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .fetch-icon {
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .fetch-text {
+            color: var(--text-primary);
+        }
+
+        .fetch-text .mono-text {
+            font-family: var(--font-mono);
+            color: var(--accent-live);
+        }
+
+        .fetch-row:not(.active) .fetch-text .mono-text {
+            color: var(--accent-verified);
+        }
+
+        .char-count {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            margin-left: 0.5rem;
+        }
+
+        /* In-flight shimmer progress */
+        .progress-bar-shimmer {
+            position: relative;
+            height: 2px;
+            width: 100%;
+            background: #191E2A;
+            overflow: hidden;
+            margin-top: 0.25rem;
+            border-radius: 1px;
+        }
+
+        .progress-bar-shimmer::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 50%;
+            background: linear-gradient(90deg, transparent, var(--accent-live), transparent);
+            animation: shimmerProgress 1.5s infinite linear;
+        }
+
+        @keyframes shimmerProgress {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(200%);
+            }
+        }
+
+        /* Saved note (sticky card format) */
+        .note-card {
+            background: #191612;
+            /* Golden-tinted dark background */
+            border: 1px solid var(--accent-live);
+            box-shadow: 0 0 10px rgba(212, 175, 106, 0.05);
+            padding: 1.25rem;
+            border-radius: 6px;
+        }
+
+        .note-card .finding-text {
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+        }
+
+        .note-card .note-footer {
+            border-top: 1px solid rgba(212, 175, 106, 0.15);
+            padding-top: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .note-card .source-tag {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent-verified);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .note-card .source-tag:hover {
+            color: #BDF0F9;
+            text-decoration: underline;
+        }
+
+        .note-card .pin-icon {
+            font-size: 0.8rem;
+            color: var(--accent-live);
+        }
+
+        /* Thought margin style */
+        .thought-row {
+            margin: 0.25rem 0 0.25rem 2.5rem;
+            border-left: 2px solid #222836;
+            padding-left: 1rem;
+            font-style: italic;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.45;
+        }
+
+        .thought-row strong {
+            font-family: var(--font-mono);
+            font-weight: 500;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: block;
+            margin-bottom: 0.25rem;
+            color: rgba(138, 141, 150, 0.6);
+        }
+
+        /* Long Running Indicator */
+        .long-running-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            color: var(--accent-live);
+            font-size: 0.85rem;
+            padding: 1rem;
+            font-family: var(--font-mono);
+            animation: breathePulse 3s infinite ease-in-out;
+        }
+
+        @keyframes breathePulse {
+            0% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Jump to Latest Floating Button */
+        .jump-to-latest {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-card);
+            border: 1px solid var(--accent-live);
+            color: var(--accent-live);
+            padding: 0.5rem 1rem;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            z-index: 50;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .jump-to-latest:hover {
+            background: #171d2a;
+            color: #FFF;
+        }
+
+        .jump-to-latest.hidden {
+            display: none !important;
+        }
+
+        /* Right Rail Sticky Column */
+        .right-rail {
+            background: #0E121A;
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 2rem;
+            gap: 1.75rem;
+        }
+
+        .rail-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .rail-card-header {
+            padding: 0.75rem 1rem;
+            background: #151A24;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .rail-card-body {
+            padding: 1rem;
+        }
+
+        /* Objectives Checklist */
+        .objectives-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+
+        .objective-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            color: var(--text-muted);
+            transition: color 0.2s ease;
+        }
+
+        .objective-item.checked {
+            color: var(--text-primary);
+        }
+
+        .objective-checkbox {
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 0.1rem;
+            flex-shrink: 0;
+        }
+
+        .objective-item.checked .objective-checkbox {
+            color: var(--accent-verified);
+        }
+
+        .objective-text {
+            cursor: pointer;
+        }
+
+        .objective-item.checked .objective-text {
+            text-decoration: line-through;
+            color: var(--text-muted);
+            opacity: 0.75;
+        }
+
+        .empty-objectives,
+        .empty-sources {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-style: italic;
+            text-align: center;
+            padding: 0.5rem 0;
+        }
+
+        /* Unique Verified Source List */
+        .sources-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .source-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .source-favicon {
+            width: 16px;
+            height: 16px;
+            border-radius: 2px;
+            object-fit: contain;
+            background: rgba(255, 255, 255, 0.05);
+            flex-shrink: 0;
+        }
+
+        .source-link {
+            font-family: var(--font-mono);
+            color: var(--accent-verified);
+            text-decoration: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .source-link:hover {
+            color: #BDF0F9;
+            text-decoration: underline;
+        }
+
+        /* Instrumentation Panel styling */
+        .instrument-panel .rail-card-body {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .instrument-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            border-bottom: 1px dashed rgba(34, 40, 54, 0.8);
+            padding-bottom: 0.35rem;
+        }
+
+        .instrument-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .instrument-row .label {
+            color: var(--text-muted);
+        }
+
+        .instrument-row .value {
+            color: var(--accent-live);
+        }
+
+        /* Final Report Card */
+        .report-card {
+            margin-top: 1rem;
+            border: 1px solid var(--border-color);
+            background: #11141D;
+            border-radius: 8px;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        /* locked-in sweep border effect */
+        .report-card.locked-in {
+            border: 2px solid var(--accent-live);
+            box-shadow: 0 0 20px rgba(212, 175, 106, 0.1);
+        }
+
+        .report-card.locked-in::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #FFF, var(--accent-live), #FFF, transparent);
+            background-size: 200% 100%;
+            animation: sweepSweep 1.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+
+        @keyframes sweepSweep {
+            0% {
+                background-position: -200% 0;
+            }
+
+            100% {
+                background-position: 200% 0;
+            }
+        }
+
+        .report-header-section {
+            border-bottom: 1px solid rgba(212, 175, 106, 0.25);
+            padding-bottom: 0.75rem;
+        }
+
+        .report-title-label {
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            color: var(--accent-live);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .report-main-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            color: var(--text-primary);
+        }
+
+        .report-content {
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Rendered report elements styles */
+        .report-content h1,
+        .report-content h2,
+        .report-content h3 {
+            font-family: var(--font-display);
+            margin: 1.25rem 0 0.5rem 0;
+            letter-spacing: -0.02em;
+        }
+
+        .report-content h1 {
+            font-size: 1.4rem;
+            color: var(--accent-live);
+        }
+
+        .report-content h2 {
+            font-size: 1.25rem;
+            color: var(--accent-live);
+        }
+
+        .report-content h3 {
+            font-size: 1.1rem;
+            color: var(--text-primary);
+        }
+
+        .report-content strong {
+            color: var(--accent-verified);
+        }
+
+        .report-content code {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            background: #181D28;
+            padding: 0.15rem 0.35rem;
+            border-radius: 3px;
+        }
+
+        .report-content p,
+        .report-content div {
+            margin-bottom: 0.75rem;
+        }
+
+        .report-content li {
+            margin-left: 1.5rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .report-section-divider {
+            border: none;
+            border-top: 1px dashed var(--border-color);
+            margin: 1.5rem 0;
+        }
+
+        .report-card-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+
+        /* Confidence and Gaps Callout */
+        .gaps-box {
+            background: rgba(240, 160, 80, 0.04);
+            border: 1px solid rgba(240, 160, 80, 0.25);
+            padding: 1rem 1.25rem;
+            border-radius: 6px;
+            color: #EDEAE2;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .gaps-box-title {
+            color: var(--error-red);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        /* Error States styling */
+        .error-card {
+            background: rgba(240, 160, 80, 0.05);
+            border: 1px solid rgba(240, 160, 80, 0.3);
+            border-radius: 6px;
+            padding: 1.25rem;
+            color: var(--text-primary);
+        }
+
+        .error-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--error-red);
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .error-body {
+            font-size: 0.9rem;
+            line-height: 1.45;
+            color: var(--text-primary);
+        }
+
+        .retry-btn {
+            background: rgba(240, 160, 80, 0.15);
+            border: 1px solid var(--error-red);
+            color: var(--text-primary);
+            padding: 0.45rem 1rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s ease;
+        }
+
+        .retry-btn:hover {
+            background: rgba(240, 160, 80, 0.25);
+            border-color: #F5B070;
+        }
+
+        /* Entry Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Utility Hide/Show classes */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Accessibility: respect user preference for reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-delay: 0s !important;
+                animation-duration: 0s !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0s !important;
+                scroll-behavior: auto !important;
+            }
+
+            .status-indicator-dot,
+            .progress-bar-shimmer::after,
+            .report-card.locked-in::before,
+            .timeline-card.active,
+            .long-running-indicator {
+                animation: none !important;
+                background-image: none !important;
+                box-shadow: none !important;
+            }
+        }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 900px) {
+            body {
+                overflow-y: auto;
+                height: auto;
+            }
+
+            .app-workspace {
+                overflow: visible;
+                height: auto;
+            }
+
+            .settings-panel.open {
+                max-height: 380px;
+            }
+
+            .settings-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .workspace-grid {
+                grid-template-columns: 1fr;
+                overflow: visible;
+                height: auto;
+            }
+
+            .timeline-column {
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+                height: auto;
+                overflow: visible;
+            }
+
+            .timeline-scroll-container {
+                overflow: visible;
+                padding: 1.5rem;
+            }
+
+            .right-rail {
+                border-left: none;
+                height: auto;
+                overflow: visible;
+                padding: 1.5rem;
+            }
+
+            .jump-to-latest {
+                position: fixed;
+                bottom: 1.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-logo">
+            <span class="logo-main">Deep Research</span>
+            <span class="logo-sub">Agent Console</span>
+        </div>
+        <div class="header-right">
+            <div class="status-pill-container" id="status-pill">
+                <span class="status-indicator-dot"></span>
+                <span class="status-pill-text" id="status-pill-text">Idle</span>
+            </div>
+            <button class="settings-toggle-btn" id="settings-toggle-btn" title="System Settings">
+                <i class="fa-solid fa-sliders"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Settings Slide Down Panel -->
+    <div class="settings-panel" id="settings-panel">
+        <div class="settings-grid">
+            <div class="settings-field">
+                <label for="provider-select">LLM Provider</label>
+                <select id="provider-select">
+                    <option value="gemini" selected>Gemini</option>
+                    <option value="groq">⚡ Groq Cloud</option>
+                    <option value="mock">Local Mock (Keyless)</option>
+                </select>
+            </div>
+            <div class="settings-field">
+                <label for="model-input">Model Name</label>
+                <input type="text" id="model-input" value="gemini-3.5-flash">
+            </div>
+            <div class="settings-field">
+                <label for="key-input">API Key Override</label>
+                <div class="password-input-wrapper">
+                    <input type="password" id="key-input" placeholder="Use backend environment key">
+                    <button id="toggle-key-visibility" class="btn-toggle-password" type="button"
+                        title="Toggle visibility">
+                        <i class="fa-regular fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="settings-field">
+                <label for="mode-select">Execution Protocol</label>
+                <select id="mode-select">
+                    <option value="stream" selected>Real-Time SSE Stream</option>
+                    <option value="poll">Background Job Polling</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Workspace Container -->
+    <div class="app-workspace">
+
+        <!-- Hero State (Idle & Empty) -->
+        <section class="hero-container" id="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title">DEEP RESEARCH</h1>
+                <p class="hero-subtitle">Autonomous Investigation Terminal</p>
+
+                <form class="query-form" id="query-form">
+                    <input type="text" id="query-input" placeholder="What do you want investigated?" required>
+                    <button type="submit" class="submit-btn" id="submit-btn">
+                        <span>Investigate</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </form>
+
+                <div class="suggestions-container">
+                    <span class="suggestions-label">Start an investigation:</span>
+                    <div class="suggestions-list">
+                        <button class="suggestion-chip"
+                            data-query="What is the current status of NASA's Artemis program as of mid-2026?">🚀 NASA
+                            Artemis Program Status (2026)</button>
+                        <button class="suggestion-chip"
+                            data-query="Compare solid-state battery commercialization progress between major companies in 2026.">🔋
+                            Solid-State Battery Commercialization</button>
+                        <button class="suggestion-chip"
+                            data-query="What are the recent breakthroughs in room-temperature superconductor replication as of mid-2026?">⚛️
+                            Room-Temperature Superconductor Replication</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Active Investigation Banner -->
+        <div class="active-case-banner hidden" id="active-case-banner">
+            <div class="case-info">
+                <span class="case-label">CASE UNDER INVESTIGATION:</span>
+                <span class="case-query mono-text" id="case-query-text"></span>
+            </div>
+            <div class="case-actions">
+                <button class="stop-btn" id="stop-btn" disabled>
+                    <i class="fa-solid fa-circle-stop"></i>
+                    <span>Abort</span>
+                </button>
+                <button class="new-case-btn" id="new-case-btn">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>New Case</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Split Grid Workspace -->
+        <section class="workspace-grid hidden" id="workspace-grid">
+
+            <!-- Timeline stream (left column) -->
+            <div class="timeline-column">
+                <div class="timeline-scroll-container" id="timeline-scroll-container">
+                    <div class="timeline-events" id="timeline-events">
+                        <!-- Events append here -->
+                    </div>
+                    <div class="long-running-indicator hidden" id="long-running-indicator">
+                        <i class="fa-solid fa-gear fa-spin"></i>
+                        <span>Searching deeper directories... investigating secondary leads</span>
+                    </div>
+                </div>
+                <!-- Float Jump button -->
+                <button class="jump-to-latest hidden" id="jump-to-latest">
+                    <i class="fa-solid fa-arrow-down"></i>
+                    <span>Jump to Latest</span>
+                </button>
+            </div>
+
+            <!-- Case metrics / checklist rail (right column) -->
+            <aside class="right-rail">
+
+                <!-- Objective Checklist -->
+                <div class="rail-card">
+                    <div class="rail-card-header">
+                        <i class="fa-solid fa-square-check" style="color: var(--accent-verified)"></i>
+                        <span>Investigation Checklist</span>
+                    </div>
+                    <div class="rail-card-body">
+                        <ul class="objectives-list" id="objectives-list">
+                            <li class="empty-objectives">Checklist compiles upon query segmentation</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Live Unique Sources list -->
+                <div class="rail-card">
+                    <div class="rail-card-header">
+                        <i class="fa-solid fa-globe" style="color: var(--accent-verified)"></i>
+                        <span>Sourced Domains</span>
+                    </div>
+                    <div class="rail-card-body">
+                        <ul class="sources-list" id="sources-list">
+                            <li class="empty-sources">No domains indexed yet</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Instrument Metrics Panel -->
+                <div class="rail-card instrument-panel">
+                    <div class="rail-card-header">
+                        <i class="fa-solid fa-terminal"></i>
+                        <span>Instrument Readout</span>
+                    </div>
+                    <div class="rail-card-body mono-text">
+                        <div class="instrument-row">
+                            <span class="label">Provider:</span>
+                            <span class="value" id="inst-provider">GROQ</span>
+                        </div>
+                        <div class="instrument-row">
+                            <span class="label">Model:</span>
+                            <span class="value" id="inst-model">-</span>
+                        </div>
+                        <div class="instrument-row">
+                            <span class="label">Turn Count:</span>
+                            <span class="value" id="inst-iteration">0/15</span>
+                        </div>
+                        <div class="instrument-row">
+                            <span class="label">Elapsed:</span>
+                            <span class="value" id="inst-duration">00:00</span>
+                        </div>
+                        <div class="instrument-row">
+                            <span class="label">Est. Tokens:</span>
+                            <span class="value" id="inst-tokens">0</span>
+                        </div>
+                    </div>
+                </div>
+
+            </aside>
+        </section>
+    </div>
+
+    <!-- Application Script logic -->
+    <script>
+        // DOM Element Cache
+        const settingsToggleBtn = document.getElementById('settings-toggle-btn');
+        const settingsPanel = document.getElementById('settings-panel');
+        const providerSelect = document.getElementById('provider-select');
+        const modelInput = document.getElementById('model-input');
+        const keyInput = document.getElementById('key-input');
+        const toggleKeyVisibility = document.getElementById('toggle-key-visibility');
+        const modeSelect = document.getElementById('mode-select');
+
+        const heroContainer = document.getElementById('hero-container');
+        const queryForm = document.getElementById('query-form');
+        const queryInput = document.getElementById('query-input');
+        const activeCaseBanner = document.getElementById('active-case-banner');
+        const caseQueryText = document.getElementById('case-query-text');
+        const stopBtn = document.getElementById('stop-btn');
+        const newCaseBtn = document.getElementById('new-case-btn');
+
+        const workspaceGrid = document.getElementById('workspace-grid');
+        const timelineScrollContainer = document.getElementById('timeline-scroll-container');
+        const timelineEvents = document.getElementById('timeline-events');
+        const longRunningIndicator = document.getElementById('long-running-indicator');
+        const jumpToLatestBtn = document.getElementById('jump-to-latest');
+
+        const objectivesList = document.getElementById('objectives-list');
+        const sourcesList = document.getElementById('sources-list');
+
+        const instProvider = document.getElementById('inst-provider');
+        const instModel = document.getElementById('inst-model');
+        const instIteration = document.getElementById('inst-iteration');
+        const instDuration = document.getElementById('inst-duration');
+        const instTokens = document.getElementById('inst-tokens');
+
+        const statusPill = document.getElementById('status-pill');
+        const statusPillText = document.getElementById('status-pill-text');
+
+        // Application State State Variables
+        let isRunning = false;
+        let elapsedSeconds = 0;
+        let timerInterval = null;
+        let currentIteration = 0;
+        let currentQuery = '';
+        let estimatedTokens = 0;
+        let subQuestions = [];
+        let completedSubQuestions = [];
+        let indexedSources = new Set();
+        let activeFetchMap = new Map();
+        let autoScroll = true;
+        let isAutoScrolling = false;
+        let abortController = null;
+        let pollIntervalId = null;
+
+        // Configuration Event Handlers
+        settingsToggleBtn.addEventListener('click', () => {
+            settingsPanel.classList.toggle('open');
+            settingsToggleBtn.classList.toggle('active');
+        });
+
+        providerSelect.addEventListener('change', () => {
+            if (providerSelect.value === 'mock') {
+                modelInput.value = 'mock-model';
+                modelInput.disabled = true;
+                keyInput.placeholder = 'No API key needed for mock mode';
+                keyInput.disabled = true;
+            } else if (providerSelect.value === 'gemini') {
+                modelInput.value = 'gemini-3.5-flash';
+                modelInput.disabled = false;
+                keyInput.placeholder = 'Use backend environment key';
+                keyInput.disabled = false;
+            } else {
+                modelInput.value = 'openai/gpt-oss-120b';
+                modelInput.disabled = false;
+                keyInput.placeholder = 'Use backend environment key';
+                keyInput.disabled = false;
+            }
+        });
+
+        toggleKeyVisibility.addEventListener('click', () => {
+            const icon = toggleKeyVisibility.querySelector('i');
+            if (keyInput.type === 'password') {
+                keyInput.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                keyInput.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        });
+
+        // Autoscroll & Timeline interactions
+        timelineScrollContainer.addEventListener('scroll', () => {
+            if (isAutoScrolling) return;
+            const threshold = 60;
+            const distanceToBottom = timelineScrollContainer.scrollHeight - timelineScrollContainer.scrollTop - timelineScrollContainer.clientHeight;
+
+            if (distanceToBottom <= threshold) {
+                autoScroll = true;
+                jumpToLatestBtn.classList.add('hidden');
+            } else {
+                autoScroll = false;
+                jumpToLatestBtn.classList.remove('hidden');
+            }
+        });
+
+        jumpToLatestBtn.addEventListener('click', () => {
+            autoScroll = true;
+            jumpToLatestBtn.classList.add('hidden');
+            scrollTimelineToBottom(true);
+        });
+
+        function scrollTimelineToBottom(forceSmooth = false) {
+            if (!autoScroll && !forceSmooth) return;
+            isAutoScrolling = true;
+            timelineScrollContainer.scrollTo({
+                top: timelineScrollContainer.scrollHeight,
+                behavior: forceSmooth ? 'smooth' : 'auto'
+            });
+            // Clear autoscrolling toggle lock
+            setTimeout(() => {
+                isAutoScrolling = false;
+            }, 60);
+        }
+
+        // Suggestions Selection
+        document.querySelectorAll('.suggestion-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                queryInput.value = chip.dataset.query;
+                startInvestigation(chip.dataset.query);
+            });
+        });
+
+        queryForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const query = queryInput.value.trim();
+            if (query) {
+                startInvestigation(query);
+            }
+        });
+
+        newCaseBtn.addEventListener('click', resetToEmptyState);
+        stopBtn.addEventListener('click', abortInvestigation);
+
+        // Core App Logic Functions
+        function startInvestigation(query) {
+            if (isRunning) return;
+
+            isRunning = true;
+            currentQuery = query;
+            currentIteration = 0;
+            elapsedSeconds = 0;
+            estimatedTokens = 0;
+            subQuestions = [];
+            completedSubQuestions = [];
+            indexedSources.clear();
+            activeFetchMap.clear();
+            autoScroll = true;
+
+            // Update UI elements
+            heroContainer.classList.add('hidden');
+            activeCaseBanner.classList.remove('hidden');
+            workspaceGrid.classList.remove('hidden');
+            caseQueryText.textContent = query;
+            stopBtn.disabled = false;
+            longRunningIndicator.classList.add('hidden');
+
+            timelineEvents.innerHTML = '';
+            objectivesList.innerHTML = '<li class="empty-objectives">Structuring objectives...</li>';
+            sourcesList.innerHTML = '<li class="empty-sources">No domains indexed yet</li>';
+
+            // Configure instrument panel display
+            instProvider.textContent = providerSelect.value.toUpperCase();
+            instModel.textContent = modelInput.value;
+            instIteration.textContent = '0/15';
+            instDuration.textContent = '00:00';
+            instTokens.textContent = '0';
+
+            // Status indicator configuration
+            statusPill.className = 'status-pill-container active';
+            statusPillText.textContent = 'Reasoning';
+
+            // Start Case Duration Timer
+            timerInterval = setInterval(() => {
+                elapsedSeconds++;
+                const mins = Math.floor(elapsedSeconds / 60).toString().padStart(2, '0');
+                const secs = (elapsedSeconds % 60).toString().padStart(2, '0');
+                instDuration.textContent = `${mins}:${secs}`;
+            }, 1000);
+
+            // Execute run via selected protocol
+            const protocol = modeSelect.value;
+            if (protocol === 'stream') {
+                runSSEStream(query);
+            } else {
+                runJobPolling(query);
+            }
+        }
+
+        function abortInvestigation() {
+            if (abortController) {
+                abortController.abort();
+            }
+            if (pollIntervalId) {
+                clearInterval(pollIntervalId);
+            }
+            finalizeInvestigation('aborted', 'Investigation cancelled by user request.');
+        }
+
+        function resetToEmptyState() {
+            isRunning = false;
+            if (timerInterval) clearInterval(timerInterval);
+            if (pollIntervalId) clearInterval(pollIntervalId);
+
+            heroContainer.classList.remove('hidden');
+            activeCaseBanner.classList.add('hidden');
+            workspaceGrid.classList.add('hidden');
+            queryInput.value = '';
+
+            statusPill.className = 'status-pill-container';
+            statusPillText.textContent = 'Idle';
+        }
+
+        function finalizeInvestigation(status, message = '') {
+            isRunning = false;
+            if (timerInterval) clearInterval(timerInterval);
+            if (pollIntervalId) clearInterval(pollIntervalId);
+
+            stopBtn.disabled = true;
+            longRunningIndicator.classList.add('hidden');
+
+            statusPill.className = status === 'completed' ? 'status-pill-container completed' : 'status-pill-container';
+            statusPillText.textContent = status.toUpperCase();
+
+            // Clear any unresolved fetch rows
+            activeFetchMap.forEach((el, url) => {
+                el.classList.remove('active');
+                const shimmer = el.querySelector('.progress-bar-shimmer');
+                if (shimmer) shimmer.remove();
+                const icon = el.querySelector('.fetch-icon');
+                if (icon) {
+                    icon.className = 'fa-solid fa-circle-xmark fetch-icon';
+                    icon.style.color = 'var(--text-muted)';
+                }
+            });
+            activeFetchMap.clear();
+
+            if (status === 'failed' || status === 'aborted') {
+                appendErrorCard(message);
+            }
+        }
+
+        // Event-Stream Reader (ReadableStream manual parse)
+        async function runSSEStream(query) {
+            abortController = new AbortController();
+            const prov = providerSelect.value;
+            let mdl = modelInput.value.trim();
+            if (prov === 'gemini' && (!mdl || mdl.includes('gpt-oss'))) {
+                mdl = 'gemini-3.5-flash';
+            }
+            const payload = {
+                query: query,
+                provider: prov,
+                model: mdl
+            };
+            const apiKey = keyInput.value.trim();
+            if (apiKey) {
+                payload.api_key = apiKey;
+            }
+
+            const headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'text/event-stream'
+            };
+            if (apiKey) {
+                if (payload.provider === 'groq') headers['X-Groq-Key'] = apiKey;
+                if (payload.provider === 'gemini') headers['X-Gemini-Key'] = apiKey;
+            }
+
+            try {
+                const response = await fetch('/api/research/stream', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(payload),
+                    signal: abortController.signal
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({ detail: response.statusText }));
+                    throw new Error(errData.detail || `HTTP error ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    // Normalize line endings before splitting — the server may send
+                    // \r\n line endings for SSE, and splitting on plain '\n\n' would
+                    // never find a boundary in that case, silently losing every event.
+                    const normalizedBuffer = buffer.replace(/\r\n/g, '\n');
+                    const parts = normalizedBuffer.split('\n\n');
+                    buffer = parts.pop(); // Hold incomplete chunk
+
+                    for (const part of parts) {
+                        if (!part.trim()) continue;
+
+                        const lines = part.split('\n');
+                        let eventType = '';
+                        let dataStr = '';
+
+                        for (const line of lines) {
+                            if (line.startsWith('event:')) {
+                                eventType = line.slice(6).trim();
+                            } else if (line.startsWith('data:')) {
+                                dataStr = line.slice(5).trim();
+                            }
+                        }
+
+                        if (eventType && dataStr) {
+                            try {
+                                const parsedData = JSON.parse(dataStr);
+                                handleAgentEvent(eventType, parsedData);
+                            } catch (e) {
+                                console.error('SSE JSON parse error:', e, dataStr);
+                            }
+                        }
+                    }
+                }
+
+                finalizeInvestigation('completed');
+
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    // Handled inside abortInvestigation
+                } else {
+                    console.error('SSE Connection failed:', err);
+                    finalizeInvestigation('failed', err.message);
+                }
+            }
+        }
+
+        // Job Polling Client Fallback
+        async function runJobPolling(query) {
+            abortController = new AbortController();
+            const prov = providerSelect.value;
+            let mdl = modelInput.value.trim();
+            if (prov === 'gemini' && (!mdl || mdl.includes('gpt-oss'))) {
+                mdl = 'gemini-3.5-flash';
+            }
+            const payload = {
+                query: query,
+                provider: prov,
+                model: mdl
+            };
+            const apiKey = keyInput.value.trim();
+            if (apiKey) {
+                payload.api_key = apiKey;
+            }
+
+            try {
+                const initResponse = await fetch('/api/research/jobs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: abortController.signal
+                });
+
+                if (!initResponse.ok) {
+                    const errData = await initResponse.json().catch(() => ({ detail: initResponse.statusText }));
+                    throw new Error(errData.detail || `HTTP error ${initResponse.status}`);
+                }
+
+                const jobInfo = await initResponse.json();
+                const jobId = jobInfo.job_id;
+
+                let processedEventCount = 0;
+
+                pollIntervalId = setInterval(async () => {
+                    try {
+                        const pollResponse = await fetch(`/api/research/jobs/${jobId}`, {
+                            signal: abortController.signal
+                        });
+
+                        if (!pollResponse.ok) {
+                            throw new Error('Failed to query job state from server.');
+                        }
+
+                        const jobState = await pollResponse.json();
+
+                        // Process new status events sequentially
+                        if (jobState.events && jobState.events.length > processedEventCount) {
+                            for (let i = processedEventCount; i < jobState.events.length; i++) {
+                                const ev = jobState.events[i];
+                                handleAgentEvent(ev.type, ev.data);
+                            }
+                            processedEventCount = jobState.events.length;
+                        }
+
+                        if (jobState.status === 'completed') {
+                            finalizeInvestigation('completed');
+                        } else if (jobState.status === 'failed') {
+                            finalizeInvestigation('failed', jobState.error || 'Async job run halted with error status.');
+                        }
+
+                    } catch (pollErr) {
+                        if (pollErr.name !== 'AbortError') {
+                            console.error('Job polling error:', pollErr);
+                            finalizeInvestigation('failed', pollErr.message);
+                        }
+                    }
+                }, 1500);
+
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error('Job initiation failed:', err);
+                    finalizeInvestigation('failed', err.message);
+                }
+            }
+        }
+
+        // Live Event Router
+        function handleAgentEvent(event, data) {
+            // Count character size roughly for estimating tokens
+            if (typeof data === 'string') {
+                estimatedTokens += Math.ceil(data.length / 4);
+            } else if (data) {
+                estimatedTokens += Math.ceil(JSON.stringify(data).length / 4);
+            }
+            instTokens.textContent = estimatedTokens.toLocaleString();
+
+            switch (event) {
+                case 'status':
+                    handleStatusEvent(data);
+                    break;
+                case 'thought':
+                    handleThoughtEvent(data);
+                    break;
+                case 'sub_questions':
+                    handleSubQuestionsEvent(data);
+                    break;
+                case 'search_query':
+                    handleSearchQueryEvent(data);
+                    break;
+                case 'search_results':
+                    handleSearchResultsEvent(data);
+                    break;
+                case 'fetch_start':
+                    handleFetchStartEvent(data);
+                    break;
+                case 'fetch_results':
+                    handleFetchResultsEvent(data);
+                    break;
+                case 'note_saved':
+                    handleNoteSavedEvent(data);
+                    break;
+                case 'final_result':
+                    handleFinalResultEvent(data);
+                    break;
+                case 'error':
+                    finalizeInvestigation('failed', data);
+                    break;
+            }
+        }
+
+        // Event-specific UI Updates
+        function handleStatusEvent(statusText) {
+            // De-activate older timeline cards to target shine only on live element
+            document.querySelectorAll('.timeline-card.active').forEach(c => c.classList.remove('active'));
+
+            // Parse iteration turn count from status (e.g., "Iteration 3: Reasoning...")
+            const iterationMatch = statusText.match(/Iteration\s+(\d+)/i);
+            if (iterationMatch) {
+                currentIteration = parseInt(iterationMatch[1]);
+                instIteration.textContent = `${currentIteration}/15`;
+                if (currentIteration >= 8) {
+                    longRunningIndicator.classList.remove('hidden');
+                }
+            }
+
+            // Map status text to status pill state
+            let phase = 'Reasoning';
+            if (statusText.toLowerCase().includes('search')) {
+                phase = 'Searching';
+            } else if (statusText.toLowerCase().includes('fetch') || statusText.toLowerCase().includes('reading')) {
+                phase = 'Reading';
+            } else if (statusText.toLowerCase().includes('synthesiz') || statusText.toLowerCase().includes('finish') || statusText.toLowerCase().includes('compil')) {
+                phase = 'Synthesizing';
+            }
+            statusPillText.textContent = phase;
+            statusPill.className = 'status-pill-container active';
+        }
+
+        // Display individual thought blocks
+        function handleThoughtEvent(thoughtContent) {
+            const thoughtDiv = document.createElement('div');
+            thoughtDiv.className = 'thought-row animate-enter';
+            thoughtDiv.innerHTML = `
+                <strong>Internal Reasoning</strong>
+                ${escapeHTML(thoughtContent)}
+            `;
+            timelineEvents.appendChild(thoughtDiv);
+            scrollTimelineToBottom();
+        }
+
+        function handleSubQuestionsEvent(questions) {
+            subQuestions = questions;
+            completedSubQuestions = new Array(questions.length).fill(false);
+
+            const card = document.createElement('div');
+            card.className = 'timeline-card active animate-enter';
+            card.innerHTML = `
+                <div class="card-header">
+                    <i class="fa-solid fa-diagram-project"></i>
+                    <span>Investigating Objectives Formulated</span>
+                </div>
+                <ol class="subquestions-ordered-list">
+                    ${questions.map(q => `<li>${escapeHTML(q)}</li>`).join('')}
+                </ol>
+            `;
+            timelineEvents.appendChild(card);
+            renderChecklist();
+            scrollTimelineToBottom();
+        }
+
+        function handleSearchQueryEvent(searchQuery) {
+            // Check if search card with query already exists
+            let searchCard = timelineEvents.querySelector(`.search-card[data-query="${CSS.escape(searchQuery)}"]`);
+            if (!searchCard) {
+                searchCard = document.createElement('div');
+                searchCard.className = 'timeline-card search-card active animate-enter';
+                searchCard.dataset.query = searchQuery;
+                searchCard.innerHTML = `
+                    <div class="card-header">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <span class="mono-text">Searching web: "${escapeHTML(searchQuery)}"</span>
+                    </div>
+                    <div class="search-results-container">
+                        <div class="progress-bar-shimmer"></div>
+                    </div>
+                `;
+                timelineEvents.appendChild(searchCard);
+                scrollTimelineToBottom();
+            }
+        }
+
+        function handleSearchResultsEvent(searchData) {
+            const query = searchData.query;
+            const results = searchData.results || [];
+
+            const searchCard = timelineEvents.querySelector(`.search-card[data-query="${CSS.escape(query)}"]`);
+            if (searchCard) {
+                searchCard.classList.remove('active');
+                const container = searchCard.querySelector('.search-results-container');
+                if (container) {
+                    container.innerHTML = '';
+                    if (results.length === 0) {
+                        container.innerHTML = '<div class="no-results">No results resolved for query.</div>';
+                    } else {
+                        results.forEach(res => {
+                            const domain = getDomain(res.href);
+                            addVerifiedSource(res.href);
+
+                            const item = document.createElement('div');
+                            item.className = 'search-result-item';
+                            item.innerHTML = `
+                                <a href="${res.href}" target="_blank" rel="noopener noreferrer" class="result-title">
+                                    ${escapeHTML(res.title || 'Untitled Source')}
+                                    <i class="fa-solid fa-arrow-up-right-from-square title-icon"></i>
+                                </a>
+                                <span class="result-url mono-text">${escapeHTML(domain)}</span>
+                                <p class="result-snippet">${escapeHTML(res.body || 'No summary preview available.')}</p>
+                            `;
+                            container.appendChild(item);
+                        });
+                    }
+                }
+            }
+            scrollTimelineToBottom();
+        }
+
+        function handleFetchStartEvent(url) {
+            const domain = getDomain(url);
+            addVerifiedSource(url);
+
+            const fetchRow = document.createElement('div');
+            fetchRow.className = 'fetch-row active animate-enter';
+            fetchRow.dataset.url = url;
+            fetchRow.innerHTML = `
+                <div class="fetch-info">
+                    <i class="fa-solid fa-circle-notch fa-spin fetch-icon" style="color: var(--accent-live)"></i>
+                    <span class="fetch-text">Reading <span class="mono-text">${escapeHTML(domain)}</span>...</span>
+                </div>
+                <div class="progress-bar-shimmer"></div>
+            `;
+            timelineEvents.appendChild(fetchRow);
+            activeFetchMap.set(url, fetchRow);
+            scrollTimelineToBottom();
+        }
+
+        function handleFetchResultsEvent(fetchData) {
+            const url = fetchData.url;
+            const length = fetchData.length || 0;
+
+            const fetchRow = activeFetchMap.get(url);
+            if (fetchRow) {
+                fetchRow.classList.remove('active');
+                const shimmer = fetchRow.querySelector('.progress-bar-shimmer');
+                if (shimmer) shimmer.remove();
+
+                const domain = getDomain(url);
+                fetchRow.innerHTML = `
+                    <div class="fetch-info">
+                        <i class="fa-solid fa-circle-check fetch-icon" style="color: var(--accent-verified)"></i>
+                        <span class="fetch-text">Read <span class="mono-text">${escapeHTML(domain)}</span></span>
+                        <span class="char-count mono-text">(${length.toLocaleString()} chars)</span>
+                    </div>
+                `;
+                activeFetchMap.delete(url);
+            }
+            scrollTimelineToBottom();
+        }
+
+        function handleNoteSavedEvent(noteData) {
+            const finding = noteData.finding;
+            const url = noteData.source_url;
+            const domain = getDomain(url);
+
+            addVerifiedSource(url);
+            updateChecklistWithFinding(finding);
+
+            const card = document.createElement('div');
+            card.className = 'note-card animate-enter';
+            card.innerHTML = `
+                <div class="finding-text">${escapeHTML(finding)}</div>
+                <div class="note-footer">
+                    <a href="${url}" target="_blank" rel="noopener noreferrer" class="source-tag">
+                        <i class="fa-solid fa-link"></i>
+                        <span>${escapeHTML(domain)}</span>
+                    </a>
+                    <i class="fa-solid fa-thumbtack pin-icon" title="Fact Saved to Case File"></i>
+                </div>
+            `;
+            timelineEvents.appendChild(card);
+            scrollTimelineToBottom();
+        }
+
+        function handleFinalResultEvent(resultData) {
+            // De-activate active items in timeline
+            document.querySelectorAll('.timeline-card.active').forEach(c => c.classList.remove('active'));
+
+            const answer = resultData.answer || '';
+            const sources = resultData.sources || [];
+            const gaps = resultData.confidence_gaps || '';
+
+            const reportCard = document.createElement('article');
+            reportCard.className = 'report-card locked-in';
+
+            // Build Sources markup
+            let sourcesMarkup = '';
+            if (sources.length > 0) {
+                sourcesMarkup = `
+                    <div class="report-section-divider"></div>
+                    <span class="report-card-label">Sourced Reference Index</span>
+                    <ol class="subquestions-ordered-list">
+                        ${sources.map(src => `
+                            <li>
+                                <a href="${src}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-verified); text-decoration: none;">
+                                    ${escapeHTML(src)}
+                                    <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.7rem; margin-left: 0.25rem;"></i>
+                                </a>
+                            </li>
+                        `).join('')}
+                    </ol>
+                `;
+            }
+
+            // Build Gaps Callout markup
+            let gapsMarkup = '';
+            if (gaps && gaps.trim() !== '') {
+                gapsMarkup = `
+                    <div class="report-section-divider"></div>
+                    <div class="gaps-box">
+                        <div class="gaps-box-title">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <span>Confidence Metrics & Gaps</span>
+                        </div>
+                        <div>${escapeHTML(gaps)}</div>
+                    </div>
+                `;
+            }
+
+            reportCard.innerHTML = `
+                <div class="report-header-section">
+                    <span class="report-title-label">Synthesized Briefing</span>
+                    <h2 class="report-main-title">Case File Summary Report</h2>
+                </div>
+                <div class="report-content">
+                    ${renderMarkdown(answer)}
+                </div>
+                ${sourcesMarkup}
+                ${gapsMarkup}
+            `;
+
+            timelineEvents.appendChild(reportCard);
+
+            // Trigger scroll and focus completion state
+            scrollTimelineToBottom();
+
+            // Turn off status pulsing
+            statusPill.className = 'status-pill-container completed';
+            statusPillText.textContent = 'COMPLETED';
+        }
+
+        function appendErrorCard(errorText) {
+            const card = document.createElement('div');
+            card.className = 'error-card animate-enter';
+
+            const isRateLimit = errorText.toLowerCase().includes('rate_limit') || errorText.includes('429');
+
+            if (isRateLimit) {
+                card.innerHTML = `
+                    <div class="error-header">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>Rate Limit Restriction</span>
+                    </div>
+                    <p class="error-body">Groq's daily token limit was reached. Try again shortly or switch models.</p>
+                    <button class="retry-btn" id="retry-btn">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span>Retry Investigation</span>
+                    </button>
+                `;
+                // Hook retry listener
+                setTimeout(() => {
+                    const retryBtn = card.querySelector('#retry-btn');
+                    if (retryBtn) {
+                        retryBtn.addEventListener('click', () => {
+                            startInvestigation(currentQuery);
+                        });
+                    }
+                }, 50);
+            } else {
+                card.innerHTML = `
+                    <div class="error-header">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        <span>Investigation Interrupted</span>
+                    </div>
+                    <p class="error-body">Internal error: ${escapeHTML(errorText)}</p>
+                `;
+            }
+
+            timelineEvents.appendChild(card);
+            scrollTimelineToBottom();
+        }
+
+        // Side-check Objectives Checklist Engine
+        function renderChecklist() {
+            if (subQuestions.length === 0) {
+                objectivesList.innerHTML = '<li class="empty-objectives">Checklist compiles upon query segmentation</li>';
+                return;
+            }
+
+            objectivesList.innerHTML = '';
+            subQuestions.forEach((q, idx) => {
+                const isChecked = completedSubQuestions[idx];
+                const item = document.createElement('li');
+                item.className = `objective-item ${isChecked ? 'checked' : ''}`;
+                item.innerHTML = `
+                    <span class="objective-checkbox">
+                        <i class="fa-regular ${isChecked ? 'fa-square-check' : 'fa-square'}"></i>
+                    </span>
+                    <span class="objective-text">${escapeHTML(q)}</span>
+                `;
+
+                // Allow manual checks toggle as overrides
+                item.addEventListener('click', () => {
+                    completedSubQuestions[idx] = !completedSubQuestions[idx];
+                    renderChecklist();
+                });
+
+                objectivesList.appendChild(item);
+            });
+        }
+
+        function updateChecklistWithFinding(findingText) {
+            if (subQuestions.length === 0) return;
+
+            const stopwords = new Set([
+                'what', 'who', 'where', 'when', 'why', 'how', 'is', 'are', 'was', 'were',
+                'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of',
+                'with', 'about', 'current', 'status', 'recent', 'developments', 'latest'
+            ]);
+
+            const findingWords = findingText.toLowerCase().split(/\W+/).filter(w => w.length > 3 && !stopwords.has(w));
+
+            let bestMatchIdx = -1;
+            let maxOverlap = 0;
+
+            subQuestions.forEach((q, idx) => {
+                if (completedSubQuestions[idx]) return; // Already checked
+
+                const qWords = q.toLowerCase().split(/\W+/).filter(w => w.length > 3 && !stopwords.has(w));
+                const overlap = qWords.filter(w => findingWords.includes(w)).length;
+                if (overlap > maxOverlap) {
+                    maxOverlap = overlap;
+                    bestMatchIdx = idx;
+                }
+            });
+
+            if (bestMatchIdx !== -1 && maxOverlap > 0) {
+                completedSubQuestions[bestMatchIdx] = true;
+            } else {
+                // Fallback: check off first unchecked subquestion progressively
+                const firstUnchecked = completedSubQuestions.indexOf(false);
+                if (firstUnchecked !== -1) {
+                    completedSubQuestions[firstUnchecked] = true;
+                }
+            }
+            renderChecklist();
+        }
+
+        // Live unique sources manager
+        function addVerifiedSource(url) {
+            const domain = getDomain(url);
+            if (!domain || indexedSources.has(domain)) return;
+
+            indexedSources.add(domain);
+
+            // Remove placeholder if active
+            const emptyEl = sourcesList.querySelector('.empty-sources');
+            if (emptyEl) emptyEl.remove();
+
+            const item = document.createElement('li');
+            item.className = 'source-item animate-enter';
+            item.innerHTML = `
+                <img class="source-favicon" src="https://www.google.com/s2/favicons?sz=32&domain=${encodeURIComponent(domain)}" alt="favicon" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><circle cx=%228%22 cy=%228%22 r=%226%22 fill=%22%23222836%22 stroke=%22%238A8D96%22 stroke-width=%221%22/></svg>'">
+                <a class="source-link" href="${url}" target="_blank" rel="noopener noreferrer">${escapeHTML(domain)}</a>
+            `;
+            sourcesList.appendChild(item);
+        }
+
+        // Helpers
+        function getDomain(urlString) {
+            try {
+                return new URL(urlString).hostname;
+            } catch (e) {
+                return urlString || '';
+            }
+        }
+
+        // Basic escape function to ward off XSS injection vectors
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Markdown-to-HTML parser (Simple bold, links, lists, headers formatting)
+        function renderMarkdown(md) {
+            if (!md) return '';
+
+            let html = escapeHTML(md);
+
+            // Headers
+            html = html.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+            html = html.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+            html = html.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+
+            // Bold
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+            // Italic
+            html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+            // Code
+            html = html.replace(/`(.*?)`/g, '<code>$1</code>');
+
+            // Links [text](href)
+            html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: var(--accent-verified); text-decoration: underline;">$1</a>');
+
+            // Numbered items
+            html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+
+            // Bullet items
+            html = html.replace(/^-\s+(.+)$/gm, '<li>$1</li>');
+
+            // Block breaks
+            html = html.split('\n').map(line => {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('<h') || trimmed.startsWith('<li') || trimmed.startsWith('<a')) {
+                    return line;
+                }
+                if (trimmed === '') {
+                    return '<br>';
+                }
+                return `<div>${line}</div>`;
+            }).join('\n');
+
+            return html;
+        }
+    </script>
+</body>
+
+</html>
