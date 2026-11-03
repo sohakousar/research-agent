@@ -1475,7 +1475,7 @@
                         </div>
                         <div class="instrument-row">
                             <span class="label">Turn Count:</span>
-                            <span class="value" id="inst-iteration">0/15</span>
+                            <span class="value" id="inst-iteration">0/5</span>
                         </div>
                         <div class="instrument-row">
                             <span class="label">Elapsed:</span>
@@ -1664,7 +1664,7 @@
             // Configure instrument panel display
             instProvider.textContent = providerSelect.value.toUpperCase();
             instModel.textContent = modelInput.value;
-            instIteration.textContent = '0/15';
+            instIteration.textContent = '0/5';
             instDuration.textContent = '00:00';
             instTokens.textContent = '0';
 
@@ -1968,7 +1968,7 @@
             const iterationMatch = statusText.match(/Iteration\s+(\d+)/i);
             if (iterationMatch) {
                 currentIteration = parseInt(iterationMatch[1]);
-                instIteration.textContent = `${currentIteration}/15`;
+                instIteration.textContent = `${currentIteration}/5`;
                 if (currentIteration >= 8) {
                     longRunningIndicator.classList.remove('hidden');
                 }

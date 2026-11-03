@@ -133,7 +133,7 @@ class ResearcherAgent:
         provider: Optional[str] = None,
         model: Optional[str] = None,
         api_key: Optional[str] = None,
-        max_iterations: int = 15
+        max_iterations: int = 5
     ):
         self.provider = provider or settings.default_llm_provider
         self.max_iterations = max_iterations
