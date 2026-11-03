@@ -2212,7 +2212,14 @@
             const card = document.createElement('div');
             card.className = 'error-card animate-enter';
 
-            const isRateLimit = errorText.toLowerCase().includes('rate_limit') || errorText.includes('429');
+            const lowerError = errorText.toLowerCase();
+            const isRateLimit = lowerError.includes('rate_limit') ||
+                lowerError.includes('rate limit') ||
+                errorText.includes('429') ||
+                lowerError.includes('quota') ||
+                errorText.includes('RESOURCE_EXHAUSTED') ||
+                lowerError.includes('resource_exhausted') ||
+                lowerError.includes('exceeded your current quota');
 
             if (isRateLimit) {
                 card.innerHTML = `
@@ -2220,7 +2227,7 @@
                         <i class="fa-solid fa-triangle-exclamation"></i>
                         <span>Rate Limit Restriction</span>
                     </div>
-                    <p class="error-body">Groq's daily token limit was reached. Try again shortly or switch models.</p>
+                    <p class="error-body">The AI provider's free rate limit was reached. Wait a few minutes, or type a different model name (for example gemini-3.7-flash or gemini-3.6-flash) in the model box and click Retry Investigation.</p>
                     <button class="retry-btn" id="retry-btn">
                         <i class="fa-solid fa-rotate-right"></i>
                         <span>Retry Investigation</span>
