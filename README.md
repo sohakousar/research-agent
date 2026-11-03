@@ -1,19 +1,24 @@
 # 🛰️ Deep Research — Autonomous Web Research Agent
 
-An autonomous AI research agent that breaks down a question, searches the web, reads sources, saves findings, and synthesizes a sourced answer — streamed live to a browser-based "evidence board" interface.
+An autonomous AI research agent that breaks down a question, searches the web, reads sources, saves findings, and synthesizes a sourced answer, streamed live to a browser-based "evidence board" interface.
 
-Built with **FastAPI**, **Groq** (openai/gpt-oss-120b), and a self-contained HTML/CSS/JS frontend — no build step required.
+Built with **FastAPI**, a provider-agnostic LLM layer (**Google Gemini** by default, **Groq** and others supported), and a self-contained HTML/CSS/JS frontend. No build step required.
+
+**Live demo:** https://research-agent-1-6x0b.onrender.com
+*(Free Render tier: the first load after idling can take 50 seconds or more.)*
 
 ---
 
 ## ✨ Features
 
-- **Autonomous agent loop** — the model decides for itself when to break down a query, search, fetch pages, save notes, or finish, using Groq's native tool-calling.
-- **Live streaming UI** — every step (searching, reading, saving a finding) streams to the browser in real time over Server-Sent Events (SSE), rendered as an evidence board with sub-questions, search results, fetched sources, and pinned findings.
-- **Sourced, synthesized answers** — the final report includes the synthesized answer, a numbered source list, and an explicit confidence/gaps statement — not a dump of raw search results.
-- **Three ways to run a query**: real-time SSE stream, a blocking synchronous call, or an async background job you can poll.
-- **Resilient search** — uses the `ddgs` library first, with an HTML-scraping fallback if that fails.
-- **Mock mode** — a keyless, fully simulated agent run for testing the frontend without hitting the Groq API or burning tokens.
+- **Autonomous agent loop**: the model decides when to break down a query, search, fetch pages, save notes, or finish, using native tool calling.
+- **Multiple LLM providers**: Gemini, Groq, OpenRouter and Cerebras through one OpenAI-compatible client (`app/llm.py`). Gemini is the default and has a free tier.
+- **Live streaming UI**: every step (searching, reading, saving a finding) streams to the browser in real time over Server-Sent Events (SSE).
+- **Sourced, synthesized answers**: the final report has the answer, a numbered source list, and a confidence/gaps statement.
+- **Three ways to run a query**: real-time SSE stream, blocking synchronous call, or an async background job you can poll.
+- **Resilient search**: uses `ddgs` first, with an HTML-scraping fallback.
+- **Model box in the UI**: type any model name to switch models without editing code (useful when a free daily quota runs out).
+- **Mock mode**: a keyless, simulated run for testing the frontend without spending tokens.
 
 ---
 
@@ -21,8 +26,9 @@ Built with **FastAPI**, **Groq** (openai/gpt-oss-120b), and a self-contained HTM
 
 ```
 app/
-├── main.py       FastAPI app — routes, SSE streaming, background jobs
-├── agent.py      ResearcherAgent — the core tool-calling loop (Groq)
+├── main.py       FastAPI app: routes, SSE streaming, background jobs
+├── agent.py      ResearcherAgent: the core tool-calling loop
+├── llm.py        Provider registry (Gemini, Groq, OpenRouter, Cerebras)
 ├── search.py     Web search (ddgs, with HTML scraping fallback)
 ├── fetch.py      Fetches and cleans page content (httpx + BeautifulSoup)
 └── config.py     Settings (pydantic-settings, reads from .env)
@@ -31,24 +37,26 @@ static/
 └── index.html    Self-contained frontend (HTML + CSS + JS, no build step)
 ```
 
-**The agent loop**, at a high level:
-1. Model breaks the query into sub-questions (`break_down_query`)
-2. Model searches the web for candidate sources (`search_web`)
-3. Model fetches and reads the most promising pages (`fetch_url`)
-4. Model saves relevant facts as it finds them (`save_note`)
-5. Model calls `finish` once it has enough convergent evidence, producing the final synthesized answer, source list, and confidence/gaps statement
+**The agent loop:**
+1. Break the query into sub-questions (`break_down_query`)
+2. Search the web for candidate sources (`search_web`)
+3. Fetch and read the most promising pages (`fetch_url`)
+4. Save relevant facts as they are found (`save_note`)
+5. Call `finish` with the synthesized answer, source list, and confidence/gaps statement
 
-Every step above is streamed to the frontend as a distinct event type (`status`, `thought`, `sub_questions`, `search_query`, `search_results`, `fetch_start`, `fetch_results`, `note_saved`, `final_result`, `error`).
+The loop is capped at **5 turns** by default (`max_iterations` in `app/agent.py`) to stay inside free-tier request limits.
+
+Every step is streamed to the frontend as an event: `status`, `thought`, `sub_questions`, `search_query`, `search_results`, `fetch_start`, `fetch_results`, `note_saved`, `final_result`, `error`.
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Getting Started (Windows)
 
 ### Prerequisites
 - Python 3.10+
-- A [Groq API key](https://console.groq.com/keys)
+- A free Gemini API key: https://aistudio.google.com/apikey
 
-### 1. Clone and install dependencies
+### 1. Clone and install
 ```bash
 git clone https://github.com/sohakousar/research-agent.git
 cd research-agent
@@ -56,14 +64,11 @@ pip install -r requirements.txt
 ```
 
 ### 2. Configure environment variables
-Copy `.env.example` to `.env` and fill in your key:
-```bash
-cp .env.example .env
-```
+Create a `.env` file in the project root (never commit it):
 ```env
-GROQ_API_KEY=your_actual_groq_key
-DEFAULT_LLM_PROVIDER=groq
-GROQ_MODEL=openai/gpt-oss-120b
+DEFAULT_LLM_PROVIDER=gemini
+GEMINI_API_KEY=your_gemini_key_here
+GEMINI_MODEL=gemini-3.5-flash
 ```
 
 ### 3. Run the server
@@ -72,49 +77,65 @@ python -m uvicorn app.main:app --reload --port 8000
 ```
 
 ### 4. Open the app
-Visit **http://127.0.0.1:8000** — the frontend is served automatically from `static/index.html`.
+Visit **http://127.0.0.1:8000**. Choose **Gemini** in the provider dropdown and ask a question.
+
+---
+
+## ⚙️ Configuration
+
+| Variable | Example | Description |
+|---|---|---|
+| `DEFAULT_LLM_PROVIDER` | `gemini` | `gemini`, `groq`, `openrouter`, `cerebras` or `mock` |
+| `GEMINI_API_KEY` | — | Google AI Studio key |
+| `GEMINI_MODEL` | `gemini-3.5-flash` | Gemini model to use |
+| `GROQ_API_KEY` | — | Optional, for the Groq provider |
+| `GROQ_MODEL` | `openai/gpt-oss-120b` | Groq model |
+| `OPENROUTER_API_KEY` | — | Optional |
+| `CEREBRAS_API_KEY` | — | Optional (may require a payment method) |
+
+Model names change often. To list the models your Gemini key can use:
+```bash
+python -c "import os,httpx;from dotenv import load_dotenv;load_dotenv();r=httpx.get('https://generativelanguage.googleapis.com/v1beta/openai/models',headers={'Authorization':'Bearer '+os.getenv('GEMINI_API_KEY')});print([m['id'] for m in r.json()['data']])"
+```
 
 ---
 
 ## 🔌 API Reference
 
 ### `POST /api/research/stream`
-Server-Sent Events stream of the full agent run in real time. Used by the frontend.
+Server-Sent Events stream of the full agent run. Used by the frontend.
 
-**Body:**
 ```json
 {
   "query": "What is the current status of NASA's Artemis program?",
-  "provider": "groq",
-  "model": "openai/gpt-oss-120b",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash",
   "api_key": null
 }
 ```
-Only `query` is required — the rest fall back to your `.env` settings.
-
-**Event stream shapes:**
+Only `query` is required. The rest fall back to your environment settings.
 
 | Event | Data shape |
 |---|---|
-| `status` | `string` — e.g. `"Iteration 2: Reasoning..."` |
-| `thought` | `string` — the model's reasoning text |
+| `status` | `string` |
+| `thought` | `string` |
 | `sub_questions` | `string[]` |
 | `search_query` | `string` |
-| `search_results` | `{ query: string, results: [{ title, href, body }] }` |
+| `search_results` | `{ query, results: [{ title, href, body }] }` |
 | `fetch_start` | `string` (URL) |
-| `fetch_results` | `{ url: string, length: number }` |
-| `note_saved` | `{ finding: string, source_url: string }` |
-| `final_result` | `{ answer: string, sources: string[], confidence_gaps: string }` |
+| `fetch_results` | `{ url, length }` |
+| `note_saved` | `{ finding, source_url }` |
+| `final_result` | `{ answer, sources: string[], confidence_gaps }` |
 | `error` | `string` |
 
 ### `POST /api/research/sync`
-Same input, blocks until finished, returns the final result directly:
+Same input. Blocks until finished and returns:
 ```json
 {
   "query": "...",
-  "provider": "groq",
-  "model": "openai/gpt-oss-120b",
-  "result": { "answer": "...", "sources": [...], "confidence_gaps": "..." }
+  "provider": "gemini",
+  "model": "gemini-3.5-flash",
+  "result": { "answer": "...", "sources": [], "confidence_gaps": "..." }
 }
 ```
 
@@ -122,60 +143,71 @@ Same input, blocks until finished, returns the final result directly:
 Starts an async background job. Returns `{ job_id, status, query }`.
 
 ### `GET /api/research/jobs/{job_id}`
-Poll for job status (`pending` / `running` / `completed` / `failed`), live event history, and the final result once ready.
-
----
-
-## 🖥️ Frontend
-
-`static/index.html` is a single self-contained file — no npm, no build step. It:
-- Connects to `/api/research/stream` via `fetch()` + `ReadableStream` (since `EventSource` only supports GET, and this endpoint needs a POST body)
-- Renders each event as it arrives: a checklist of sub-questions, live search/fetch cards, pinned findings, and a final report card
-- Handles rate-limit errors from Groq specifically, with a retry option
-- Respects `prefers-reduced-motion` and is fully responsive
-
----
-
-## ⚙️ Configuration
-
-All settings are read from environment variables (via `.env` locally, or your host's environment variable settings in production):
-
-| Variable | Default | Description |
-|---|---|---|
-| `GROQ_API_KEY` | — | Your Groq API key (required) |
-| `DEFAULT_LLM_PROVIDER` | `groq` | Only `groq` (or `mock` for testing) is supported |
-| `GROQ_MODEL` | `openai/gpt-oss-120b` | Groq model to use |
+Poll for status (`pending` / `running` / `completed` / `failed`), live events, and the final result.
 
 ---
 
 ## ☁️ Deployment (Render)
 
-This project is deployed on [Render](https://render.com):
+Deployed on [Render](https://render.com) and redeployed automatically on every push to `main`.
 
 - **Build Command:** `pip install -r requirements.txt`
 - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-- **Environment Variables:** set `GROQ_API_KEY`, `DEFAULT_LLM_PROVIDER`, `GROQ_MODEL` in the Render dashboard (never commit real keys to the repo)
+- **Environment variables** (Render dashboard > Environment; the `.env` file is not deployed):
+  - `DEFAULT_LLM_PROVIDER=gemini`
+  - `GEMINI_API_KEY=your_key`
+  - `GEMINI_MODEL=gemini-3.5-flash`
+- If the build fails on a new Python version, add `PYTHON_VERSION=3.12.3`.
 
-> **Note:** On Render's free tier, the service spins down after 15 minutes of inactivity. The first request after idling can take 30–60 seconds to wake back up.
+> On Render's free tier the service sleeps after 15 minutes of inactivity. The first request after idling can take 50 seconds or more.
+
+Update workflow:
+```bash
+git add .
+git commit -m "describe your change"
+git push
+```
+
+---
+
+## 🧯 Troubleshooting
+
+| Problem | Cause and fix |
+|---|---|
+| **"Rate Limit Restriction"** in the UI | The free tier allows only a small number of requests per day for each model (about 20 for some). Type a different model name in the model box (for example `gemini-3.7-flash` or `gemini-3.6-flash`) and click **Retry Investigation**, or wait for the daily reset (midnight Pacific time). Creating a key in a new Google project also gives fresh quota. |
+| **"API Key for provider 'gemini' is missing"** | `GEMINI_API_KEY` is not set. Locally, check `.env` (no spaces before the key name). On Render, add it under Environment and redeploy. |
+| **404 "model not found"** | The model name is wrong or unavailable to your key. List available models with the command above. |
+| **Connection refused when testing** | The server is not running. Start it with the `uvicorn` command first. |
+| **Page looks unchanged after an update** | Hard-reload with `Ctrl+F5` or use an Incognito window. |
+
+Each research question can use several LLM requests, so on free tiers start with short questions.
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Backend:** FastAPI, Uvicorn, Groq SDK (native `AsyncGroq` client, tool-calling)
-- **Search:** `ddgs` (DuckDuckGo), with an `httpx` + BeautifulSoup HTML-scraping fallback
-- **Fetching:** `httpx` (async) + BeautifulSoup for content extraction
+- **Backend:** FastAPI, Uvicorn, OpenAI-compatible async client (Gemini, Groq, OpenRouter, Cerebras)
+- **Search:** `ddgs` (DuckDuckGo), with an `httpx` + BeautifulSoup fallback
+- **Fetching:** `httpx` (async) + BeautifulSoup
 - **Streaming:** `sse-starlette` (Server-Sent Events)
 - **Frontend:** Vanilla HTML/CSS/JS, no framework or build step
 
 ---
 
+## 🔒 Security
+
+- Never commit `.env` or paste API keys into chats, issues, or screenshots. `.env` is listed in `.gitignore`.
+- If a key is ever exposed, delete it in the provider's console and create a new one.
+
+---
+
 ## 📄 License
 
-Add your preferred license here (e.g. MIT).
+Add your preferred license here (for example MIT).
 
 ---
 
 ## 🙋 Author
 
 Built by **Syeda Soha Kousar**
+GitHub: https://github.com/sohakousar · LinkedIn: https://www.linkedin.com/in/syeda-soha-kousar/
